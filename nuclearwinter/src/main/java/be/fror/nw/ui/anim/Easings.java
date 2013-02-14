@@ -18,6 +18,8 @@ package be.fror.nw.ui.anim;
 
 import static com.google.common.base.Preconditions.*;
 
+import com.google.common.annotations.VisibleForTesting;
+
 /**
  * @author Olivier Grégoire
  */
@@ -80,7 +82,8 @@ public class Easings {
 	return DefaultEasing.EXPONENTIAL;
     }
 
-    private static enum DefaultEasing implements InvertibleEasing {
+    @VisibleForTesting
+    static enum DefaultEasing implements InvertibleEasing {
 	LINEAR {
 	    @Override
 	    public float ease(float t, float d) {
