@@ -19,6 +19,8 @@ package be.fror.nw.ui.anim;
 import static com.google.common.base.Preconditions.*;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.CaseFormat;
+import com.google.common.collect.ImmutableList;
 
 /**
  * @author Olivier Grégoire
@@ -84,6 +86,17 @@ public class Easings {
 
     @VisibleForTesting
     static enum DefaultEasing implements InvertibleEasing {
+	NO_OP {
+	    @Override
+	    public float ease(float t, float d) {
+		return 0.0f;
+	    }
+
+	    @Override
+	    public Easing inverse() {
+		return this;
+	    }
+	},
 	LINEAR {
 	    @Override
 	    public float ease(float t, float d) {
@@ -239,6 +252,12 @@ public class Easings {
 		return EXPONENTIAL;
 	    }
 	};
+
+	@Override
+	public String toString() {
+	    // Format according to the api-name
+	    return CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, name()) + "()";
+	}
     }
 
     /**
@@ -253,15 +272,16 @@ public class Easings {
 	if (easing instanceof InvertibleEasing) {
 	    return ((InvertibleEasing) easing).inverse();
 	}
-	return new InverseEasing(easing);
+	return new InversedEasing(easing);
     }
 
-    private static class InverseEasing
+    @VisibleForTesting
+    static class InversedEasing
 	    implements InvertibleEasing {
 
 	private final Easing easing;
 
-	InverseEasing(Easing easing) {
+	InversedEasing(Easing easing) {
 	    this.easing = easing;
 	}
 
@@ -273,6 +293,112 @@ public class Easings {
 	@Override
 	public Easing inverse() {
 	    return this.easing;
+	}
+
+	@Override
+	public String toString() {
+	    return "inverse(" + this.easing + ")";
+	}
+    }
+
+    public static ComposedEasingBuilder compose() {
+	return new ComposedEasingBuilder();
+    }
+
+    public static class ComposedEasingBuilder {
+
+	private final ImmutableList.Builder<ComposedEasingItem> builder;
+
+	ComposedEasingBuilder() {
+	    this.builder = ImmutableList.builder();
+	}
+
+	public ComposedEasingBuilder add(Easing easing, float weight, float amplitude) {
+	    checkNotNull(easing);
+	    checkArgument(weight > 0);
+	    checkArgument(amplitude > 0);
+
+	    this.builder.add(new ComposedEasingItem(easing, weight, amplitude));
+
+	    return this;
+	}
+
+	public ComposedEasingBuilder addBlank(float weight) {
+	    checkArgument(weight > 0);
+
+	    this.builder.add(new ComposedEasingItem(DefaultEasing.NO_OP, weight, 0));
+
+	    return this;
+	}
+
+	public Easing build() {
+	    return new ComposedEasing(this);
+	}
+    }
+
+    @VisibleForTesting
+    static class ComposedEasing
+	    implements Easing {
+
+	private final ImmutableList<ComposedEasingItem> items;
+	private final float totalWeight;
+	private final float totalAmplitude;
+
+	private ComposedEasing(ComposedEasingBuilder builder) {
+	    this.items = builder.builder.build();
+	    float totalWeight = 0.0f;
+	    float totalAmplitude = 0.0f;
+	    for (ComposedEasingItem i : this.items) {
+		totalWeight += i.weight;
+		totalAmplitude += i.amplitude;
+	    }
+	    this.totalWeight = totalWeight;
+	    this.totalAmplitude = totalAmplitude;
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * 
+	 * @see be.fror.nw.ui.anim.Easing#ease(float, float)
+	 */
+	@Override
+	public float ease(float t, float d) {
+	    // TODO Fix. Doesn't work at all.
+	    
+	    System.out.printf("enter ease(t=%.3f, d=%.3f); totalWeight=%.3f, totalAmplitude=%.3f%n", t, d, this.totalWeight, this.totalAmplitude);
+	    final float totalWeight = t / d * this.totalWeight;
+	    System.out.printf("relativeT=%.3f%n", totalWeight);
+	    float currentSum = 0.0f;
+	    float currentAmplitude = 0.0f;
+	    for (ComposedEasingItem i : this.items) {
+		float nextCurrentSum = currentSum + i.weight;
+		if (nextCurrentSum >= totalWeight) {
+		    System.out.printf("easing: %s", i.easing);
+		    
+		    
+		    
+		    float newT = (totalWeight - currentSum) * totalAmplitude / i.amplitude;
+		    float newD = i.amplitude / totalAmplitude;
+		    System.out.printf(": t=%.2f, d=%.2f%n", newT, newD);
+		    System.out.println();
+		    return i.easing.ease(newT, newD) * (i.amplitude / totalAmplitude) + currentSum;
+		}
+		currentAmplitude += i.amplitude;
+		currentSum = nextCurrentSum;
+	    }
+	    return 0;
+	}
+    }
+
+    static class ComposedEasingItem {
+	private final Easing easing;
+	private final float weight;
+	private final float amplitude;
+
+	ComposedEasingItem(Easing easing, float weight, float amplitude) {
+	    this.easing = easing;
+	    this.weight = weight;
+	    this.amplitude = amplitude;
 	}
     }
 }
