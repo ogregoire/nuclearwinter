@@ -18,4 +18,4 @@
  * @author Olivier Grégoire
  *
  */
-package be.fror.nw.ui.input;
+package be.fror.nw.anim;

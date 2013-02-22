@@ -14,8 +14,12 @@
  *    limitations under the License.
  */
 
+package be.fror.nw.anim;
+
 /**
  * @author Olivier Grégoire
  *
  */
-package be.fror.nw.ui.anim;
+public interface InvertibleEasing extends Easing {
+    public Easing inverse();
+}

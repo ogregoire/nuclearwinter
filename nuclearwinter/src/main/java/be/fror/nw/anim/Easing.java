@@ -14,7 +14,7 @@
  *    limitations under the License.
  */
 
-package be.fror.nw.ui.anim;
+package be.fror.nw.anim;
 
 /**
  * @author Olivier Grégoire
