@@ -15,23 +15,14 @@
  */
 package be.fror.nw.anim;
 
-import org.junit.Test;
+import static be.fror.nw.anim.EasingTestTools.*;
 
-import be.fror.nw.anim.Easing;
-import be.fror.nw.anim.Easings;
-import static org.junit.Assert.*;
+import org.junit.Test;
 
 /**
  * @author Olivier Grégoire
  */
 public class DefaultEasingsTest {
-
-    public void testEasing(Easing easing, float[][] data, float delta) {
-	String easingName = easing.toString();
-	for (float[] testData : data) {
-	    assertEquals(easingName, testData[0], easing.ease(testData[1], testData[2]), delta);
-	}
-    }
 
     @Test
     public void testLinear() {

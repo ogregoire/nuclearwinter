@@ -18,8 +18,11 @@ package be.fror.nw.anim;
 
 import static com.google.common.base.Preconditions.*;
 
+import java.util.Locale;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.CaseFormat;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -253,9 +256,18 @@ public class Easings {
 	    }
 	};
 
+	private final boolean isInverse;
+
+	private DefaultEasing() {
+	    this.isInverse = name().endsWith("_INVERSE");
+	}
+
 	@Override
 	public String toString() {
 	    // Format according to the api-name
+	    if (isInverse) {
+		return "inverse(" + inverse() + ")";
+	    }
 	    return CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, name()) + "()";
 	}
     }
@@ -336,7 +348,6 @@ public class Easings {
 	}
     }
 
-    @VisibleForTesting
     static class ComposedEasing
 	    implements Easing {
 
@@ -363,30 +374,25 @@ public class Easings {
 	 */
 	@Override
 	public float ease(float t, float d) {
-	    // TODO Fix. Doesn't work at all.
-	    
-	    System.out.printf("enter ease(t=%.3f, d=%.3f); totalWeight=%.3f, totalAmplitude=%.3f%n", t, d, this.totalWeight, this.totalAmplitude);
 	    final float totalWeight = t / d * this.totalWeight;
-	    System.out.printf("relativeT=%.3f%n", totalWeight);
-	    float currentSum = 0.0f;
+	    float currentWeight = 0.0f;
 	    float currentAmplitude = 0.0f;
 	    for (ComposedEasingItem i : this.items) {
-		float nextCurrentSum = currentSum + i.weight;
-		if (nextCurrentSum >= totalWeight) {
-		    System.out.printf("easing: %s", i.easing);
-		    
-		    
-		    
-		    float newT = (totalWeight - currentSum) * totalAmplitude / i.amplitude;
-		    float newD = i.amplitude / totalAmplitude;
-		    System.out.printf(": t=%.2f, d=%.2f%n", newT, newD);
-		    System.out.println();
-		    return i.easing.ease(newT, newD) * (i.amplitude / totalAmplitude) + currentSum;
+		float nextCurrentWeight = currentWeight + i.weight;
+		if (nextCurrentWeight < totalWeight) {
+		    currentAmplitude += i.amplitude;
+		    currentWeight = nextCurrentWeight;
+		    continue;
 		}
-		currentAmplitude += i.amplitude;
-		currentSum = nextCurrentSum;
+		return i.easing.ease(totalWeight - currentWeight, i.weight) * (i.amplitude / totalAmplitude)
+			+ currentAmplitude / totalAmplitude;
 	    }
 	    return 0;
+	}
+
+	@Override
+	public String toString() {
+	    return Joiner.on(", ").appendTo(new StringBuilder("composed("), items).append(')').toString();
 	}
     }
 
@@ -399,6 +405,12 @@ public class Easings {
 	    this.easing = easing;
 	    this.weight = weight;
 	    this.amplitude = amplitude;
+	}
+
+	@Override
+	public String toString() {
+	    return String.format(Locale.ENGLISH, "{%s, weight=%.2f, amplitude=%.2f}", this.easing, this.weight,
+		    this.amplitude);
 	}
     }
 }
